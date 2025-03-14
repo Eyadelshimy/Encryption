@@ -11,3 +11,5 @@ In this project, a group of three will implement a **Python function** to encryp
 - Supports scaling for **larger messages** by chaining encrypted blocks in CBC mode.  
 
 This implementation will provide a fundamental understanding of **block cipher encryption** and how CBC mode enhances security by incorporating **chaining dependencies** between blocks.
+
+you can edit manually the iv and the key for any custome encryption
