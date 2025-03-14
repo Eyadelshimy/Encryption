@@ -88,40 +88,55 @@ def s_box_substitution(bits):
         output += format(val, '04b')
     return output
 
+
+input_string ='#Eg«Íï' # here put any string and this will convert it to binary and use it for the DES encryption
+def string_to_binary(input_string):
+    return ''.join(format(ord(char), '08b') for char in input_string)
 # Given plaintext and 1st round key
-plaintext = "0000000100100011010001010110011110001001101010111100110111101111"
-round_key = "000110110000001011101111111111000111000001110010"
+plaintext = string_to_binary(input_string)
+round_keys = ["000110110000001011101111111111000111000001110010"] * 16
 
 # Step 1: Initial Permutation (IP)
 permuted_text = permute(plaintext, IP)
 print(f"Result after IP: {permuted_text}")
 
 # Step 2: Split into Left and Right Halves
-L0 = permuted_text[:32]
-R0 = permuted_text[32:]
-print(f"L0: {L0}")
-print(f"R0: {R0}")
+L = permuted_text[:32]
+R = permuted_text[32:]
+print(f"L0: {L}")
+print(f"R0: {R}")
 
-# Step 3: Expand the Right Half (R0)
-expanded_R0 = permute(R0, E)
-print(f"Expanded R0: {expanded_R0}")
+# Perform 16 rounds of DES
+for i in range(16):
+    # Step 3: Expand the Right Half (R)
+    expanded_R = permute(R, E)
+    print(f"Expanded R{i}: {expanded_R}")
 
-# Step 4: XOR with Round Key
-xored_R0 = xor(expanded_R0, round_key)
-print(f"Result after XORing: {xored_R0}")
+    # Step 4: XOR with Round Key
+    xored_R = xor(expanded_R, round_keys[i])
+    print(f"Result after XORing with K{i}: {xored_R}")
 
-# Step 5: Apply S-Box Substitution
-s_box_output = s_box_substitution(xored_R0)
-print(f"Result after S-Box: {s_box_output}")
+    # Step 5: Apply S-Box Substitution
+    s_box_output = s_box_substitution(xored_R)
+    print(f"Result after S-Box: {s_box_output}")
 
-# Step 6: Permutation (P-Box)
-p_box_output = permute(s_box_output, P)
-print(f"Result after P-Box: {p_box_output}")
+    # Step 6: Permutation (P-Box)
+    p_box_output = permute(s_box_output, P)
+    print(f"Result after P-Box: {p_box_output}")
 
-# Step 7: XOR with Left Half (L0)
-R1 = xor(L0, p_box_output)
-print(f"R1: {R1}")
+    # Step 7: XOR with Left Half (L)
+    new_R = xor(L, p_box_output)
+    print(f"R{i+1}: {new_R}")
 
-# Step 8: Update Halves
-L1 = R0
-print(f"Final Result: {L1 + R1}")
+    # Step 8: Update Halves
+    L = R
+    R = new_R
+
+    # Print final output for each round
+    print(f"Final output after round {i+1}: {L + R} \n")
+
+# Final result after 16 rounds
+final_result = L + R
+print(f"Final Result: {final_result}")
+
+
