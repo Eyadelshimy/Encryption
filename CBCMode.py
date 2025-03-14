@@ -72,11 +72,19 @@ S_BOXES = [
     ]
 ]
 
+FP = [40, 8, 48, 16, 56, 24, 64, 32, 39, 7, 47, 15, 55, 23, 63, 31,
+      38, 6, 46, 14, 54, 22, 62, 30, 37, 5, 45, 13, 53, 21, 61, 29,
+      36, 4, 44, 12, 52, 20, 60, 28, 35, 3, 43, 11, 51, 19, 59, 27,
+      34, 2, 42, 10, 50, 18, 58, 26, 33, 1, 41, 9, 49, 17, 57, 25]
+
+
 def permute(bits, table):
     return ''.join(bits[i - 1] for i in table)
 
+
 def xor(a, b):
     return ''.join(str(int(x) ^ int(y)) for x, y in zip(a, b))
+
 
 def s_box_substitution(bits):
     output = ''
@@ -89,54 +97,103 @@ def s_box_substitution(bits):
     return output
 
 
-input_string ='#Eg«Íï' # here put any string and this will convert it to binary and use it for the DES encryption
 def string_to_binary(input_string):
     return ''.join(format(ord(char), '08b') for char in input_string)
-# Given plaintext and 1st round key
-plaintext = string_to_binary(input_string)
-round_keys = ["000110110000001011101111111111000111000001110010"] * 16
-
-# Step 1: Initial Permutation (IP)
-permuted_text = permute(plaintext, IP)
-print(f"Result after IP: {permuted_text}")
-
-# Step 2: Split into Left and Right Halves
-L = permuted_text[:32]
-R = permuted_text[32:]
-print(f"L0: {L}")
-print(f"R0: {R}")
-
-# Perform 16 rounds of DES
-for i in range(16):
-    # Step 3: Expand the Right Half (R)
-    expanded_R = permute(R, E)
-    print(f"Expanded R{i}: {expanded_R}")
-
-    # Step 4: XOR with Round Key
-    xored_R = xor(expanded_R, round_keys[i])
-    print(f"Result after XORing with K{i}: {xored_R}")
-
-    # Step 5: Apply S-Box Substitution
-    s_box_output = s_box_substitution(xored_R)
-    print(f"Result after S-Box: {s_box_output}")
-
-    # Step 6: Permutation (P-Box)
-    p_box_output = permute(s_box_output, P)
-    print(f"Result after P-Box: {p_box_output}")
-
-    # Step 7: XOR with Left Half (L)
-    new_R = xor(L, p_box_output)
-    print(f"R{i+1}: {new_R}")
-
-    # Step 8: Update Halves
-    L = R
-    R = new_R
-
-    # Print final output for each round
-    print(f"Final output after round {i+1}: {L + R} \n")
-
-# Final result after 16 rounds
-final_result = L + R
-print(f"Final Result: {final_result}")
 
 
+def split_into_blocks(bits, block_size=64):
+    blocks = [bits[i:i + block_size] for i in range(0, len(bits), block_size)]
+    if len(blocks[-1]) < block_size:
+        blocks[-1] = blocks[-1].ljust(block_size, '0')  # Pad with '0's
+    return blocks
+
+
+def cbc_encrypt(plaintext, round_keys, iv):
+    blocks = split_into_blocks(plaintext)
+    previous_block = iv
+    ciphertext = ''
+
+    for block_index, block in enumerate(blocks):
+        print(f"Block {block_index + 1}:")
+        block = xor(block, previous_block)
+        print(f"  After XOR with IV/Previous Block: {block}")
+        permuted_text = permute(block, IP)
+        print(f"  After Initial Permutation: {permuted_text}")
+        L = permuted_text[:32]
+        R = permuted_text[32:]
+
+        for i in range(16):
+            print(f"  Round {i + 1}:")
+            expanded_R = permute(R, E)
+            print(f"    Expansion: {expanded_R}")
+            xored_R = xor(expanded_R, round_keys[i])
+            print(f"    Key Mixing: {xored_R}")
+            s_box_output = s_box_substitution(xored_R)
+            print(f"    Substitution: {s_box_output}")
+            p_box_output = permute(s_box_output, P)
+            print(f"    Permutation: {p_box_output}")
+            new_R = xor(L, p_box_output)
+            print(f"    New R: {new_R}")
+            L = R
+            R = new_R
+
+        final_block = R + L
+        final_permuted = permute(final_block, FP)
+        print(f"  After Final Permutation: {final_permuted}")
+        ciphertext += final_permuted
+        previous_block = final_permuted
+
+    return ciphertext
+
+
+def string_to_64bit_binary(input_string):
+    binary_string = ''.join(format(ord(char), '08b') for char in input_string)
+    if len(binary_string) > 64:
+        raise ValueError("Input string is too long for ECB mode, must be 8 characters or less")
+    return binary_string.ljust(64, '0')  # Pad with '0's to ensure it is 64 bits long
+
+def ecb_encrypt(plaintext, round_keys):
+    if len(plaintext) != 64:
+        raise ValueError("ECB mode requires plaintext to be exactly 64 bits long")
+
+    permuted_text = permute(plaintext, IP)
+    L = permuted_text[:32]
+    R = permuted_text[32:]
+
+    for i in range(16):
+        print(f"Round {i + 1}:")
+        expanded_R = permute(R, E)
+        print(f"  Expansion: {expanded_R}")
+        xored_R = xor(expanded_R, round_keys[i])
+        print(f"  Key Mixing: {xored_R}")
+        s_box_output = s_box_substitution(xored_R)
+        print(f"  Substitution: {s_box_output}")
+        p_box_output = permute(s_box_output, P)
+        print(f"  Permutation: {p_box_output}")
+        new_R = xor(L, p_box_output)
+        print(f"  New R: {new_R}")
+        L = R
+        R = new_R
+
+    final_block = R + L
+    encrypted_text = permute(final_block, FP)
+    return encrypted_text
+
+# Main function to get user input and perform encryption
+def main():
+    mode = input("Enter mode (CBC/ECB): ").strip().upper()
+    input_string = input("Enter plaintext: ").strip()
+    round_keys = ["010101010101010101010101010101010101010101010101"] * 16
+    iv = '0000000000000000000000000000000000000000000000000000000000000000'  # Default IV (64 bits)
+
+    if mode == 'CBC':
+        plaintext = string_to_binary(input_string)
+        encrypted_text = cbc_encrypt(plaintext, round_keys, iv)
+    else:
+        plaintext = string_to_64bit_binary(input_string)
+        encrypted_text = ecb_encrypt(plaintext, round_keys)
+
+    print(f"Encrypted Text: {encrypted_text}")
+
+if __name__ == "__main__":
+    main()
